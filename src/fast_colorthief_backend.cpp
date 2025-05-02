@@ -1,21 +1,20 @@
-#include <iostream>
 #include <cmath>
-#include <chrono>
-
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/stl.h>
-
-namespace py = pybind11;
-
-#include "constants.hpp"
+#include <optional>
+#include <stdexcept>
 #include "cmap.hpp"
+#include "constants.hpp"
+#include "VBox.hpp"
+#include "unordered_map"
+#include "FastColorThief.h"
 
-enum Color {RED, GREEN, BLUE};
-
-int get_color_index(int r, int g, int b);
 
 std::vector<color_t> quantize(std::vector<int>& histo, VBox& vbox, int color_count);
+
+inline bool cmap_compare(const std::tuple<VBox, color_t>& a, const std::tuple<VBox, color_t>& b) {
+    VBox box1 = std::get<0>(a);
+    VBox box2 = std::get<0>(b);
+    return uint64_t(box1.count()) * uint64_t(box1.volume()) < uint64_t(box2.count()) * uint64_t(box2.volume());
+}
 
 
 std::tuple<std::vector<int>, color_t, color_t, bool> get_histo_cpp(uint8_t* data, int pixel_count, int quality) {
@@ -46,35 +45,14 @@ std::tuple<std::vector<int>, color_t, color_t, bool> get_histo_cpp(uint8_t* data
     return {histo, min_colors, max_colors, pixel_found}; 
 }
 
-//py::array::c_style remove strides (https://pybind11.readthedocs.io/en/stable/advanced/pycpp/numpy.html)
-std::vector<color_t> get_palette(py::array_t<uint8_t,  py::array::c_style> image, int color_count, int quality, bool use_gpu) {
-    py::buffer_info image_buffer = image.request();
+std::vector<color_t> get_palette_cpp(uint8_t* data, int width, int height, int color_count, int quality) {
+    int pixel_count = width * height;
 
-    if (image_buffer.ndim != 3) throw std::runtime_error("Image must be 3D matrix (height x width x color)");
-    if (image_buffer.shape[2] != 4) throw std::runtime_error("Image must have 4 channels (red x green x blue x alpha)");
+    auto [histo, min_colors, max_colors, pixel_found] = get_histo_cpp(data, pixel_count, quality);
+    if (!pixel_found)
+        throw std::runtime_error("No valid pixels found");
 
-    uint8_t* data = (uint8_t*)image_buffer.ptr;
-    int pixel_count = image_buffer.shape[0] * image_buffer.shape[1];
-
-    std::tuple<std::vector<int>, color_t, color_t, bool> preprocessing_result;
-    preprocessing_result = get_histo_cpp(data, pixel_count, quality);
-    // if (use_gpu && quality == 1) {
-    //     preprocessing_result = get_histo_cuda(data, pixel_count, quality);
-    // }
-    // else {
-    //     preprocessing_result = get_histo_cpp(data, pixel_count, quality);
-    // }
-
-    std::vector<int> histo = std::get<0>(preprocessing_result);
-    color_t min_colors = std::get<1>(preprocessing_result);
-    color_t max_colors = std::get<2>(preprocessing_result);
-    bool pixel_found = std::get<3>(preprocessing_result);
-
-    if (!pixel_found) {
-        throw std::runtime_error("Empty pixels when quantize");
-    }
-
-    VBox vbox = VBox(min_colors[0], max_colors[0], min_colors[1], max_colors[1], min_colors[2], max_colors[2], histo);
+    VBox vbox(min_colors[0], max_colors[0], min_colors[1], max_colors[1], min_colors[2], max_colors[2], histo);
     return quantize(histo, vbox, color_count);
 }
 
@@ -279,9 +257,3 @@ std::vector<color_t> quantize(std::vector<int>& histo, VBox& vbox, int color_cou
 
     return final_colors;
 }
-
-
-PYBIND11_MODULE(fast_colorthief_backend, m) {
-    m.def("get_palette", &get_palette, "Return color palette");
-};
-

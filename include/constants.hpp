@@ -1,8 +1,6 @@
+#pragma once
 #include <array>
-#include <tuple>
-#include <vector>
 #include <stdint.h>  // needed for uint8_t
-#include <stdexcept>  // needed for std::runtime_error
 
 using color_t = std::array<uint8_t, 3>;
 

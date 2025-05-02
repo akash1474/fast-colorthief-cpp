@@ -1,18 +1,28 @@
-cmake_minimum_required(VERSION 2.8.12)
-project(fast_colorthief_backend)
+cmake_minimum_required(VERSION 3.10)
+project(FastColorThief)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -O3")
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory(pybind11)
+# Optional: enable CUDA support
+# enable_language(CUDA)
+# add_library(cuda_fast_colorthief STATIC include/kernel.cu)
+# set_target_properties(cuda_fast_colorthief PROPERTIES LINKER_LANGUAGE CUDA)
+# set_target_properties(cuda_fast_colorthief PROPERTIES CUDA_ARCHITECTURES "50;72")
 
-#enable_language(CUDA)
+# Library source
+add_library(FastColorThief STATIC
+    src/fast_colorthief_backend.cpp
+)
 
-#add_library(cuda_fast_colorthief STATIC cpp/kernel.cu)
-#set_target_properties(cuda_fast_colorthief PROPERTIES LINKER_LANGUAGE CUDA)
-#set_target_properties(cuda_fast_colorthief PROPERTIES CUDA_ARCHITECTURES "50;72")
+target_include_directories(FastColorThief PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
-pybind11_add_module(fast_colorthief_backend cpp/fast_colorthief_backend.cpp)
+# If using CUDA:
+# target_link_libraries(FastColorThief PRIVATE cuda_fast_colorthief)
 
-#target_link_libraries(fast_colorthief_backend PRIVATE cuda_fast_colorthief)
+# Example usage: Add an executable
+# add_executable(example src/example.cpp)
+# target_link_libraries(example PRIVATE FastColorThief)

@@ -1,8 +1,9 @@
-#include <vector>
-#include <unordered_map>
+#pragma once
+#include "vector"
+#include "constants.hpp"
+
 
 int get_color_index(int r, int g, int b);
-
 
 class VBox {
 public:
@@ -105,51 +106,4 @@ public:
     bool avg_initialized;
     int count_cache;
     bool count_initialized;
-};
-
-std::ostream &operator<<(std::ostream &os, VBox& box) {
-    os << box.r1 << "-" << box.r2 << " " << box.g1 << "-" << box.g2 << " " << box.b1 << "-" << box.b2 << " Count: " << box.count() << " Volume: " << box.volume() << " Count * volume: " << uint64_t(box.count()) * uint64_t(box.volume());
-    return os;
-}
-
-
-inline bool cmap_compare(const std::tuple<VBox, color_t>& a, const std::tuple<VBox, color_t>& b) {
-    VBox box1 = std::get<0>(a);
-    VBox box2 = std::get<0>(b);
-    return uint64_t(box1.count()) * uint64_t(box1.volume()) < uint64_t(box2.count()) * uint64_t(box2.volume());
-}
-
-
-template<typename T, typename COMP>
-class PQueue {
-public:
-    PQueue(COMP* sort_key) : sort_key(sort_key), contents({}), sorted(false) { }
-    
-    void sort() { 
-        std::sort(contents.begin(), contents.end(), sort_key); 
-        sorted = true;
-    }
-
-    void push(const T& o) {
-        contents.push_back(o);
-        sorted = false;
-    }
-
-    T pop() {
-        if (!sorted) {
-            sort();
-        }
-        
-        T result = contents.back();
-        contents.pop_back();
-        return result;
-    }
-
-    int size() {return contents.size();}
-    std::vector<T> get_contents() {return contents;}
-
-private:
-    std::vector<T> contents;
-    COMP* sort_key;
-    bool sorted;
 };
